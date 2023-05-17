@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "chip8.h": "c",
-        "stdio.h": "c",
-        "stdint.h": "c"
-    }
-}
