@@ -13,25 +13,6 @@ SDL_Renderer* screen_draw = NULL;
 void initialize();
 void emulatecycle();
 
-int keymap[16] = 
-{
-    SDL_SCANCODE_X,
-    SDL_SCANCODE_1,
-    SDL_SCANCODE_2,
-    SDL_SCANCODE_3,
-    SDL_SCANCODE_Q,
-    SDL_SCANCODE_W,
-    SDL_SCANCODE_E,
-    SDL_SCANCODE_A,
-    SDL_SCANCODE_S,
-    SDL_SCANCODE_D,
-    SDL_SCANCODE_Z,
-    SDL_SCANCODE_C,
-    SDL_SCANCODE_4,
-    SDL_SCANCODE_R,
-    SDL_SCANCODE_F,
-    SDL_SCANCODE_V
-};
 
 void setkeys() {
     const uint8_t *keydown = SDL_GetKeyboardState(NULL);
@@ -57,7 +38,7 @@ void createscreen() {
         exit(-1);
     }
     printf("screen started\n");
-    screen_draw = SDL_CreateRenderer(screen, -1, SDL_RENDERER_ACCELERATED);
+    screen_draw = SDL_CreateRenderer(screen, -1, 0);
     if (!screen_draw) {
         printf("screen unable to be drawn\n");
         exit(-1);
@@ -95,9 +76,6 @@ void updatescreen() {
 }
 
 void initialize() {
-    for (int i = 0; i < 80; ++i) {
-        memory[i] = chip8_fontset[i];
-    }
     pc = 0x200;
     opcode = 0;
     I = 0;
@@ -109,6 +87,9 @@ void initialize() {
     memset(gfx, 0, sizeof(gfx));
     memset(key, 0, sizeof(key));
     memset(V, 0, sizeof(V));
+    for (int i = 0; i < 80; ++i) {
+        memory[i] = chip8_fontset[i];
+    }
     
 }
 
@@ -303,11 +284,11 @@ void emulatecycle() {
             switch (opcode & 0x00FF) {
                 case 0x009E:
                     printf("0xE09E\n");
-                    pc += (key[V[x]]) ? 4 : 2;
+                    pc += (key[V[x] & 0xF]) ? 4 : 2;
                     break;
                 case 0x00A1:
                     printf("0xE0A1\n");
-                    pc += (!key[V[x]]) ? 4 : 2;
+                    pc += (!key[V[x] & 0xF]) ? 4 : 2;
                     break;
                 default:
                     printf("unknown opcode in E000: {%.4x}\n", opcode);
@@ -325,15 +306,15 @@ void emulatecycle() {
                 case 0x000A:
                     printf("0xF00A\n");
                     keydown = SDL_GetKeyboardState(NULL);
+                    SDL_Event(event);
+                    SDL_WaitEvent(&event);
                     for (int i = 0; i < 16; i++) {
-                        SDL_Event event;
-                        SDL_WaitEvent(&event);
                         if (keydown[keymap[i]]) {
                             V[x] = i;
+                            pc += 2;
                             break;
                         }
                     }
-                    pc += 2;
                     break;
                 case 0x0015:
                     printf("0xF015\n");
@@ -367,6 +348,7 @@ void emulatecycle() {
                     for (int i = 0; i <= x; i++) {
                         memory[I + i] = V[i];
                     }
+                    I += x + 1;
                     pc += 2;
                     break;
                 case 0x0065:
@@ -425,7 +407,7 @@ int main(int argc, char *argv[]) {
         if (event.type == SDL_QUIT) {
             run = 0;
         }
-        SDL_Delay(10);
+        SDL_Delay(30);
     
     }
     closescreen();
