@@ -67,9 +67,9 @@ void createscreen() {
 
 void updatescreen() {
     
-    SDL_SetRenderDrawColor(screen_draw, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(screen_draw, 128, 128, 128, 255);
     SDL_RenderClear(screen_draw);
-    SDL_SetRenderDrawColor(screen_draw, 0, 255, 0, 255);
+    SDL_SetRenderDrawColor(screen_draw, 0, 0, 0, 255);
     int32_t width = 0;
     int32_t height = 0;
     SDL_GetWindowSize(screen, &width, &height);
