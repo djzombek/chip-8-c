@@ -15,21 +15,21 @@ void emulatecycle();
 
 int keymap[16] = 
 {
+    SDL_SCANCODE_X,
     SDL_SCANCODE_1,
     SDL_SCANCODE_2,
     SDL_SCANCODE_3,
-    SDL_SCANCODE_4,
     SDL_SCANCODE_Q,
     SDL_SCANCODE_W,
     SDL_SCANCODE_E,
-    SDL_SCANCODE_R,
     SDL_SCANCODE_A,
     SDL_SCANCODE_S,
     SDL_SCANCODE_D,
-    SDL_SCANCODE_F,
     SDL_SCANCODE_Z,
-    SDL_SCANCODE_X,
     SDL_SCANCODE_C,
+    SDL_SCANCODE_4,
+    SDL_SCANCODE_R,
+    SDL_SCANCODE_F,
     SDL_SCANCODE_V
 };
 
@@ -280,7 +280,6 @@ void emulatecycle() {
             break;
         case 0xD000:
             printf("0xD000\n");
-            df = 1;
             V[15] = 0;
             uint8_t height = n;
             uint8_t pixel = 0;
@@ -289,14 +288,15 @@ void emulatecycle() {
                 pixel = memory[I + yLine];
                 for (uint16_t xLine = 0; xLine < 8; xLine++) {
                     if ((pixel & (0x80 >> xLine)) != 0) {
-
                         if (gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] == 1) {
                             V[15] = 1;
                         }
                         gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] ^= 1;
                     }
                 }
-                        }
+            }
+
+            df = 1;
             pc += 2;
             break;
         case 0xE000:
@@ -325,15 +325,13 @@ void emulatecycle() {
                 case 0x000A:
                     printf("0xF00A\n");
                     keydown = SDL_GetKeyboardState(NULL);
-                    while (1) {
-                        SDL_PumpEvents();
-                        for (int i = 0; i < 16; i++) {
-                            if (keydown[key[i]]) {
-                                V[x] = i;
-                                break;
-                            }
+                    for (int i = 0; i < 16; i++) {
+                        SDL_Event event;
+                        SDL_WaitEvent(&event);
+                        if (keydown[keymap[i]]) {
+                            V[x] = i;
+                            break;
                         }
-                        SDL_Delay(1);
                     }
                     pc += 2;
                     break;
