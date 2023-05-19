@@ -54,3 +54,4 @@ uint16_t stack[16];
 uint16_t sp;
 uint8_t key[16];
 uint8_t df = 0;
+uint8_t dw = 0;

@@ -6,13 +6,15 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+
+Mix_Chunk *beep = NULL;
 
 SDL_Window* screen = NULL;
 SDL_Renderer* screen_draw = NULL;
 
 void initialize();
 void emulatecycle();
-
 
 void setkeys() {
     const uint8_t *keydown = SDL_GetKeyboardState(NULL);
@@ -22,13 +24,15 @@ void setkeys() {
     }
 }
 
-
-
 void createscreen() {
 
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         const char *error = SDL_GetError();
-        printf("unable to start sdl {%s}", error);
+        printf("unable to start sdl {%s}\n", error);
+        exit(-1);
+    }
+    if (Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0 ) {
+        printf("unable to start sdl SDL_mixer Error: %s\n", Mix_GetError());
         exit(-1);
     }
     printf("sdl started\n");
@@ -44,6 +48,12 @@ void createscreen() {
         exit(-1);
     }
     printf("render created\n");
+    beep = Mix_LoadWAV("beep.wav");
+    if (beep == NULL) {
+        printf("failed to load beep");
+        exit(-1);
+    }
+    Mix_Volume(-1, 20);
 }
 
 void updatescreen() {
@@ -81,7 +91,7 @@ void initialize() {
     I = 0;
     sp = 0;
     dtimer = 60;
-    stimer = 60;
+    stimer = 0;
     memset(stack, 0, sizeof(stack));
     memset(memory, 0, sizeof(memory));
     memset(gfx, 0, sizeof(gfx));
@@ -91,6 +101,31 @@ void initialize() {
         memory[i] = chip8_fontset[i];
     }
     
+}
+
+void dxyn(uint16_t opcode) {
+
+    V[15] = 0;
+    uint8_t height = (opcode & 0x000F);
+    uint8_t pixel = 0;
+    uint8_t x = (opcode & 0x0F00) >> 8;
+    uint8_t y = (opcode & 0x00F0) >> 4;
+
+    for (uint16_t yLine = 0; yLine < height; yLine++) {
+        pixel = memory[I + yLine];
+        for (uint16_t xLine = 0; xLine < 8; xLine++) {
+            if ((pixel & (0x80 >> xLine)) != 0) {
+                if (gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] == 1) {
+                    V[15] = 1;
+                }
+                gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] ^= 1;
+            }
+        }
+    }
+
+    df = 1;
+    pc += 2;
+
 }
 
 void load_rom(char *filename) { 
@@ -112,7 +147,7 @@ void load_rom(char *filename) {
     rom = NULL;
 }
 
-void emulatecycle() {
+void emulatecycle(int iter) {
     //printf("emulating cycle\n\n");
     opcode = memory[pc] << 8 | memory[pc + 1];
     printf("{%.4x}", opcode);
@@ -122,6 +157,7 @@ void emulatecycle() {
     uint8_t x = (opcode & 0x0F00) >> 8;
     uint8_t y = (opcode & 0x00F0) >> 4;
     uint16_t vf;
+    
     const uint8_t *keydown = SDL_GetKeyboardState(NULL);
     srand(time(0));
     
@@ -261,24 +297,13 @@ void emulatecycle() {
             break;
         case 0xD000:
             printf("0xD000\n");
-            V[15] = 0;
-            uint8_t height = n;
-            uint8_t pixel = 0;
-
-            for (uint16_t yLine = 0; yLine < height; yLine++) {
-                pixel = memory[I + yLine];
-                for (uint16_t xLine = 0; xLine < 8; xLine++) {
-                    if ((pixel & (0x80 >> xLine)) != 0) {
-                        if (gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] == 1) {
-                            V[15] = 1;
-                        }
-                        gfx[(V[x] + xLine) % 64][(V[y] + yLine) % 32] ^= 1;
-                    }
+            if (dw) {
+                if (iter == 0) {
+                    dxyn(opcode);
                 }
+            } else {
+                dxyn(opcode);
             }
-
-            df = 1;
-            pc += 2;
             break;
         case 0xE000:
             switch (opcode & 0x00FF) {
@@ -372,6 +397,8 @@ void emulatecycle() {
 void closescreen() {
     SDL_DestroyRenderer(screen_draw);
     SDL_DestroyWindow(screen);
+    Mix_FreeChunk(beep);
+    Mix_CloseAudio();
     SDL_Quit();
     screen = NULL;
     screen_draw = NULL;
@@ -380,7 +407,7 @@ void closescreen() {
 int main(int argc, char *argv[]) {
     SDL_Event event;
     uint8_t run = 1;
-    uint8_t clock = (uint8_t)(500/60);
+    uint8_t clock = 11;
     createscreen();
     initialize();
     load_rom(argv[1]);
@@ -390,7 +417,7 @@ int main(int argc, char *argv[]) {
     }
     while(run) {
         for (int i = 0; i < clock; i++) {
-            emulatecycle();
+            emulatecycle(i);
         }
         if (dtimer > 0) {
             dtimer--;
@@ -400,6 +427,11 @@ int main(int argc, char *argv[]) {
             updatescreen();
             df = 0;
         }
+
+        if (stimer > 0) {
+            Mix_PlayChannel(-1, beep, 0);
+            stimer = 0; 
+        }
         
         setkeys();
 
@@ -407,7 +439,7 @@ int main(int argc, char *argv[]) {
         if (event.type == SDL_QUIT) {
             run = 0;
         }
-        SDL_Delay(30);
+        SDL_Delay(20);
     
     }
     closescreen();
