@@ -171,9 +171,7 @@ void emulatecycle(int iter) {
                     break;
                 case 0x00EE:
                     printf("0x00EE\n");
-                    --sp;
-                    pc = stack[sp];
-                    pc += 2;
+                    pc = stack[--sp] + 2;
                     break;
                 default:
                     printf("unknown opcode in 0x0000: {%.4x}\n", opcode);
@@ -223,17 +221,17 @@ void emulatecycle(int iter) {
                     break;
                 case 0x0001:
                     printf("0x8001\n");
-                    V[x] = (V[x] | V[y]);
+                    V[x] |= V[y];
                     pc += 2;
                     break;
                 case 0x0002:
                     printf("0x8002\n");
-                    V[x] = (V[x] & V[y]);
+                    V[x] &= V[y];
                     pc += 2;
                     break;
                 case 0x0003:
                     printf("0x8003\n");
-                    V[x] = (V[x] ^ V[y]);
+                    V[x] ^= V[y];
                     pc += 2;
                     break;
                 case 0x0004:
